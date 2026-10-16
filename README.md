@@ -10,9 +10,9 @@
 
 > ⚠ **Proof of concept, written by Claude (AI) – no warranty, use at your own risk.** See [Disclaimer](#disclaimer).
 
-Live translation of the Counter-Strike 2 chat on Linux, shown as a see-through overlay right
-on top of the in-game chat. Translates into German by default – any other language works
-with `--lang` (e.g. `--lang en`).
+Live translation of the Counter-Strike 2 chat on **Linux and Windows 10/11**, shown as a
+see-through overlay right on top of the in-game chat. Translates into German by default – any
+other language works (settings window, or `--lang en`).
 
 - **Starts by itself** when CS2 runs and stops with the game
 - **Overlay** without a frame, always on top, mouse clicks go through to the game
@@ -39,7 +39,30 @@ for years.
 **Privacy:** chat messages are sent to Google or MyMemory for translation. Nothing else leaves
 your PC.
 
-## Install
+## Windows 10 / 11
+
+1. Download **`cs2translate.exe`** from the [latest release](https://github.com/Diesumpfeule/cs2translate/releases/latest)
+   and put it somewhere it can stay (e.g. `Documents\cs2translate`). No Python needed.
+2. **Steam launch option:** CS2 → right-click → *Properties → General → Launch options*: `-condebug`
+3. **Display mode:** in CS2 under *Video* set **Fullscreen Windowed** (Windows hides every overlay
+   in exclusive fullscreen).
+4. **Double-click `cs2translate.exe`.** A small settings window opens: language, font size, width,
+   how long messages stay, opacity, original text on/off and **Start with Windows** (on by
+   default). Press *Save & close*.
+5. Start CS2 once and click **Position overlay …** in the settings to drag the overlay over the
+   CS2 chat (Esc to finish – the position is saved).
+
+From then on it runs quietly in the background and shows the overlay **only while CS2 runs**.
+Clicks go through the overlay into the game, and it never takes focus. To change settings,
+double-click the exe again. To stop it starting with Windows, untick *Start with Windows*.
+
+Settings are stored in `%APPDATA%\cs2translate\config.json`. Windows SmartScreen may warn about
+an "unknown publisher" the first time, because the exe isn't code-signed. Click *More info → Run
+anyway*, or build it yourself from `cs2translate.py` with PyInstaller (see
+`.github/workflows/windows.yml`). Every release is built by GitHub Actions straight from this
+repository.
+
+## Install on Linux
 
 1. **Tkinter** (for the overlay window):
    ```sh
@@ -106,6 +129,12 @@ python3 ~/.local/share/cs2translate/cs2translate.py [options]
 | `--terminal` | terminal output only, no window | |
 | `--debug` | shows **every** new log line | |
 | `--log "PATH"` | path to `console.log` (in quotes!) | auto-detected |
+| `--settings` | settings window (what a double-click on the Windows exe opens) | |
+| `--watch` | stay in the background, overlay only while CS2 runs | |
+| `--autostart on/off` | Windows: start the watcher at login | |
+| `--test` | show the overlay with sample messages | |
+
+Values saved in the settings window become the defaults; options on the command line still win.
 
 For the automatic start, add options to the watcher: `~/.local/bin/cs2translate-watcher`,
 the line with `--history 0` – e.g. `--history 0 --font-size 14 --no-original`.

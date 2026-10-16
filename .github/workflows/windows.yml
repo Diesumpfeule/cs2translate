@@ -49,6 +49,17 @@ jobs:
           if ($q.HasExited) { throw "overlay exited early (code $($q.ExitCode))" }
           Stop-Process $q
 
+      - name: Share screenshots (manual runs only, for the dev check)
+        if: github.event_name == 'workflow_dispatch'
+        shell: pwsh
+        run: |
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-screenshots
+          git rm -rfq --cached .
+          git add settings.png overlay.png
+          git commit -qm "screenshots"
+          git push -f origin ci-screenshots
+
       - uses: actions/upload-artifact@v4
         with:
           name: cs2translate-windows
