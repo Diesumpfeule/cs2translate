@@ -105,6 +105,8 @@ jobs:
           PID=$!
           sleep 4; DISPLAY=:99 import -window root x11-shown.png
           sleep 10; DISPLAY=:99 import -window root x11-hidden.png
+          printf 'L 10/16/2026 - 20:00:30: [T] Bob: wir gehen mitte\n' >> console.log
+          sleep 4; DISPLAY=:99 import -window root x11-again.png
           kill -0 $PID || { cat x11.log; exit 1; }
           kill $PID; cat x11.log
       - name: Wayland overlay (layer shell on headless Sway) – see-through, hides when empty
@@ -119,6 +121,8 @@ jobs:
           PID=$!
           sleep 4; grim wl-shown.png
           sleep 12; grim wl-hidden.png
+          printf 'L 10/16/2026 - 20:00:30: [T] Bob: wir gehen mitte\n' >> console2.log
+          sleep 4; grim wl-again.png
           kill -0 $PID || { cat wl.log; cat sway.log | tail -20; exit 1; }
           kill $PID; cat wl.log
       - name: Share screenshots (manual runs only)
