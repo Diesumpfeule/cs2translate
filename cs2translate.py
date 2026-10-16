@@ -574,10 +574,8 @@ def run_overlay_layershell(out_q, args):
         ctx = win.get_style_context()
         if show and not state["shown"]:
             ctx.remove_class("empty")
-            box.show()
         elif not show and state["shown"]:
-            ctx.add_class("empty")
-            box.hide()
+            ctx.add_class("empty")                        # never 0×0 – the empty box keeps a few px
         win.resize(1, 1)                                  # shrink to the messages
         state["shown"] = show
         return True
