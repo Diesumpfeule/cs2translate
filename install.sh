@@ -62,6 +62,10 @@ pkill -f "$WATCHER" 2>/dev/null || true
 nohup "$WATCHER" >/dev/null 2>&1 &
 disown
 
+if [ -n "${WAYLAND_DISPLAY:-}" ] && ! python3 -c "import gi; gi.require_version('GtkLayerShell', '0.1'); import cairo" 2>/dev/null; then
+    echo "Tip (Wayland: Sway, Hyprland, KDE …): for a see-through overlay above fullscreen games install"
+    echo "     sudo dnf install gtk-layer-shell python3-gobject python3-cairo"
+fi
 if ! python3 -c "import tkinter" 2>/dev/null; then
     echo "Note: python3-tkinter is missing:  sudo dnf install python3-tkinter"
     echo

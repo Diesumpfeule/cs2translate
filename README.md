@@ -64,7 +64,15 @@ repository.
 
 ## Install on Linux
 
-1. **Tkinter** (for the overlay window):
+1. **Window toolkit.** On **Wayland** (Sway, Hyprland, KDE, GNOME …) install `gtk-layer-shell`.
+   You get a real overlay: the background is see-through, it sits above fullscreen games and clicks
+   go through.
+   ```sh
+   sudo dnf install gtk-layer-shell python3-gobject python3-cairo      # Fedora
+   sudo apt install gir1.2-gtklayershell-0.1 python3-gi python3-gi-cairo   # Debian / Ubuntu
+   ```
+   Without it, the overlay is an X11 window via **Tkinter**. Some Wayland desktops can't make that
+   window see-through; it then shrinks to just the messages and disappears completely when empty:
    ```sh
    sudo dnf install python3-tkinter     # Fedora
    sudo apt install python3-tk          # Debian / Ubuntu / Mint
