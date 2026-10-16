@@ -411,6 +411,7 @@ def layer_shell_available():
         gi.require_version("Gtk", "3.0")
         gi.require_version("GtkLayerShell", "0.1")
         from gi.repository import GtkLayerShell  # noqa: F401
+        import cairo  # noqa: F401  (empty input region = click-through)
         return True
     except (ImportError, ValueError):
         return False
@@ -585,7 +586,10 @@ def run_overlay_layershell(out_q, args):
 
 def run_overlay(out_q, args):
     if layer_shell_available():
-        return run_overlay_layershell(out_q, args)
+        try:
+            return run_overlay_layershell(out_q, args)
+        except Exception as e:                    # fall back to the X11 window
+            print(f"Wayland overlay failed ({e}) – using the X11 window instead.", flush=True)
     import tkinter as tk
 
     cfg = load_cfg()
