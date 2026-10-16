@@ -492,6 +492,21 @@ def run_overlay(out_q, args):
     root.after(LOGO_SECONDS * 1000, logo_off)
 
     hint_shown = []
+    shown = [True]
+    bottom = y + height                       # the overlay grows upwards from here
+    last_geo = [""]
+
+    def fit():
+        """Only as tall as the messages – a small box instead of a big dark rectangle where the
+        desktop can't make windows see-through."""
+        if args.move:
+            return
+        root.update_idletasks()
+        h = max(box.winfo_reqheight() + 4, 24)
+        geo = f"{width}x{h}+{x}+{bottom - h}"
+        if geo != last_geo[0]:
+            last_geo[0] = geo
+            root.geometry(geo)
 
     def poll():
         while not out_q.empty():
@@ -507,13 +522,20 @@ def run_overlay(out_q, args):
         now = time.time()
         while lines and lines[0][1] < now and not args.move:
             lines.pop(0)[0].destroy()
-        # invisible while there's nothing to show
-        try:
-            root.attributes("-alpha", args.alpha if (lines or args.move or logo_on[0]) else 0.0)
-        except tk.TclError:
-            pass
-        if not WINDOWS:
-            root.lift()
+        # nothing to show → hide the window completely. (Unmapping works on every desktop;
+        # an alpha of 0 is ignored by compositors that don't support X11 opacity, e.g. Sway.)
+        show = bool(lines or args.move or logo_on[0])
+        if show != shown[0]:
+            shown[0] = show
+            if show:
+                root.deiconify()
+                root.attributes("-topmost", True)
+            else:
+                root.withdraw()
+        if show:
+            fit()
+            if not WINDOWS:
+                root.lift()
         root.after(200, poll)
 
     poll()
