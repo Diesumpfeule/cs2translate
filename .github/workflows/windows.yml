@@ -7,6 +7,11 @@ on:
     branches: [main]
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a release with this tag, e.g. v1.1.0 (empty = just build)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -50,7 +55,7 @@ jobs:
           Stop-Process $q
 
       - name: Share screenshots (manual runs only, for the dev check)
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release == ''
         shell: pwsh
         run: |
           git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
@@ -69,9 +74,16 @@ jobs:
             overlay.png
 
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.release || github.ref_name }}
+          name: cs2translate ${{ inputs.release || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          body: |
+            **Windows 10/11:** download `cs2translate.exe`, set `-condebug` in Steam, double-click it once.
+            **Linux:** see the README (Wayland overlay via gtk-layer-shell, X11/Tk fallback).
+            Proof of concept, written by Claude (Anthropic) – no warranty.
           files: dist/cs2translate.exe
 
   linux:
@@ -110,7 +122,7 @@ jobs:
           kill -0 $PID || { cat wl.log; cat sway.log | tail -20; exit 1; }
           kill $PID; cat wl.log
       - name: Share screenshots (manual runs only)
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && inputs.release == ''
         run: |
           mkdir /tmp/shots && cp *.png *.log /tmp/shots/
           git config user.name ci; git config user.email ci@users.noreply.github.com
