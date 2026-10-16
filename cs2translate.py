@@ -396,7 +396,196 @@ def make_click_through(win):
         return False
 
 
+def _hex_rgba(c, a):
+    c = c.lstrip("#")
+    return f"rgba({int(c[0:2], 16)}, {int(c[2:4], 16)}, {int(c[4:6], 16)}, {a:.2f})"
+
+
+def layer_shell_available():
+    """Wayland (Sway, Hyprland, KDE …) + gtk-layer-shell: a real overlay – see-through background,
+    sits above fullscreen games, clicks go through."""
+    if WINDOWS or not os.environ.get("WAYLAND_DISPLAY") or os.environ.get("CS2T_BACKEND") == "tk":
+        return False
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        gi.require_version("GtkLayerShell", "0.1")
+        from gi.repository import GtkLayerShell  # noqa: F401
+        return True
+    except (ImportError, ValueError):
+        return False
+
+
+def run_overlay_layershell(out_q, args):
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("GtkLayerShell", "0.1")
+    import cairo
+    from gi.repository import Gdk, GLib, Gtk, GtkLayerShell
+    from html import escape
+
+    cfg = load_cfg()
+    th = cfg.get("theme") or {}
+    BG, TEXT, ORIG = th.get("bg", "#0b0b0b"), th.get("text", "#ffffff"), th.get("orig", "#8a8a8a")
+    FONT, MONO = th.get("font", "DejaVu Sans"), th.get("mono", "DejaVu Sans Mono")
+    colors = {"CT": th.get("ct", "#6fb6ff"), "T": th.get("t", "#f2b84b")}
+    ALL = th.get("all", "#9be37a")
+
+    mon = Gdk.Display.get_default().get_monitor(0)
+    sh = mon.get_geometry().height if mon else 1080
+    height = int(sh * 0.22)
+    pos = {"x": args.x if args.x is not None else cfg.get("x", 20),
+           "y": args.y if args.y is not None else cfg.get("y", int(sh * 0.40))}
+    bottom = pos["y"] + height                     # grows upwards from here, like the Tk overlay
+
+    win = Gtk.Window(title="CS2 Chat Overlay")
+    vis = win.get_screen().get_rgba_visual()
+    if vis:
+        win.set_visual(vis)
+    win.set_app_paintable(True)
+    GtkLayerShell.init_for_window(win)
+    GtkLayerShell.set_namespace(win, "cs2translate")
+    GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
+    GtkLayerShell.set_exclusive_zone(win, -1)
+    for edge in (GtkLayerShell.Edge.LEFT, GtkLayerShell.Edge.BOTTOM):
+        GtkLayerShell.set_anchor(win, edge, True)
+    try:
+        GtkLayerShell.set_keyboard_mode(win, GtkLayerShell.KeyboardMode.ON_DEMAND if args.move
+                                        else GtkLayerShell.KeyboardMode.NONE)
+    except AttributeError:                       # older gtk-layer-shell
+        GtkLayerShell.set_keyboard_interactivity(win, bool(args.move))
+
+    def place():
+        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, max(0, pos["x"]))
+        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, max(0, sh - bottom))
+    place()
+
+    css = Gtk.CssProvider()
+    css.load_from_data(f"""
+        window {{ background: {_hex_rgba(BG, args.alpha)}; border-radius: 6px; }}
+        label {{ font-family: "{FONT}"; font-size: {args.font_size}pt; font-weight: bold; color: {TEXT}; }}
+        label.orig {{ font-size: {max(args.font_size - 3, 7)}pt; font-weight: normal; color: {ORIG}; }}
+        label.logo {{ font-family: "{MONO}"; font-size: 9pt; color: {th.get("logo", ALL)}; }}
+        label.hint {{ background: #333; color: #fff; font-size: 9pt; font-weight: normal; padding: 4px; }}
+    """.encode())
+    Gtk.StyleContext.add_provider_for_screen(win.get_screen(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER)
+
+    box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    box.set_size_request(args.width, -1)
+    box.set_margin_start(8)
+    box.set_margin_end(8)
+    box.set_margin_top(4)
+    box.set_margin_bottom(4)
+    win.add(box)
+    lines = []
+
+    def label(markup, cls=None):
+        lb = Gtk.Label()
+        lb.set_markup(markup)
+        lb.set_xalign(0)
+        lb.set_line_wrap(True)
+        lb.set_max_width_chars(max(20, args.width // 9))
+        if cls:
+            lb.get_style_context().add_class(cls)
+        return lb
+
+    def add_line(channel, name, text, orig=None):
+        row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        row.pack_start(label(f'<span foreground="{colors.get(channel, ALL)}">{escape(name)}:</span> '
+                             f'{escape(text)}'), False, False, 0)
+        if orig:
+            row.pack_start(label("   " + escape(orig), "orig"), False, False, 0)
+        box.pack_start(row, False, False, 0)
+        row.show_all()
+        lines.append((row, time.time() + args.duration))
+        while len(lines) > args.lines:
+            lines.pop(0)[0].destroy()
+
+    if args.move:
+        box.pack_start(label("Drag the overlay where you want it – the position is saved. Esc = done.",
+                             "hint"), False, False, 0)
+        drag = {}
+
+        def press(_w, e):
+            drag.update(x=e.x, y=e.y)
+
+        def motion(_w, e):
+            if drag:
+                pos["x"] += int(e.x - drag["x"])
+                nonlocal_bottom[0] += int(e.y - drag["y"])
+                place2()
+
+        def release(_w, _e):
+            drag.clear()
+            cfg.update(x=pos["x"], y=nonlocal_bottom[0] - height)
+            save_cfg(cfg)
+            print(f"Position saved: x={cfg['x']} y={cfg['y']}", flush=True)
+
+        nonlocal_bottom = [bottom]
+
+        def place2():
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, max(0, pos["x"]))
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, max(0, sh - nonlocal_bottom[0]))
+
+        win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK
+                       | Gdk.EventMask.POINTER_MOTION_MASK)
+        win.connect("button-press-event", press)
+        win.connect("motion-notify-event", motion)
+        win.connect("button-release-event", release)
+        win.connect("key-press-event", lambda _w, e: Gtk.main_quit() if e.keyval == Gdk.KEY_Escape else None)
+        add_line("CT", "Example", "Hello, this is a translated message", "hallo, das ist eine Nachricht")
+        add_line("T", "Player", "We go B")
+
+    logo = label(escape(LOGO.format(lang=args.lang.upper()).strip("\n")), "logo")
+    box.pack_start(logo, False, False, 0)
+    state = {"logo": True, "shown": False, "hint": False}
+
+    def logo_off():
+        state["logo"] = False
+        logo.destroy()
+        return False
+    GLib.timeout_add(LOGO_SECONDS * 1000, logo_off)
+
+    def click_through(*_a):
+        if not args.move and win.get_window():
+            win.input_shape_combine_region(cairo.Region())   # empty input region = clicks go through
+
+    win.connect("realize", click_through)
+    win.connect("map", click_through)
+
+    def poll():
+        while not out_q.empty():
+            kind, data = out_q.get()
+            if kind == "status" and data.startswith("Waiting") and not state["hint"]:
+                state["hint"] = True
+                add_line("ALL", "cs2translate", "waiting for CS2 – is -condebug set in Steam's launch options?")
+            elif kind == "chat":
+                channel, name, msg, tr, same = data
+                add_line(channel, name, tr, None if same or args.no_original else msg)
+            elif kind == "raw" and args.debug:
+                add_line("ALL", "log", data)
+        now = time.time()
+        while lines and lines[0][1] < now and not args.move:
+            lines.pop(0)[0].destroy()
+        show = bool(lines or args.move or state["logo"])
+        if show and not state["shown"]:
+            win.show_all()
+        elif not show and state["shown"]:
+            win.hide()
+        if show:
+            win.resize(1, 1)                              # shrink back to the messages
+        state["shown"] = show
+        return True
+
+    GLib.timeout_add(200, poll)
+    win.connect("destroy", Gtk.main_quit)
+    poll()
+    Gtk.main()
+
+
 def run_overlay(out_q, args):
+    if layer_shell_available():
+        return run_overlay_layershell(out_q, args)
     import tkinter as tk
 
     cfg = load_cfg()

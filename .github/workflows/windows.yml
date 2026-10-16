@@ -75,32 +75,49 @@ jobs:
           files: dist/cs2translate.exe
 
   linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Tk + virtual display
-        run: sudo apt-get update -q && sudo apt-get install -yq python3-tk xvfb x11-apps imagemagick
+      - name: Tk, GTK layer shell, headless Sway
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -yq python3-tk python3-gi gir1.2-gtk-3.0 gir1.2-gtklayershell-0.1 \
+            sway grim xvfb x11-apps imagemagick fonts-dejavu
       - name: Self-test
         run: python3 cs2translate.py --self-test
-      - name: Overlay stays up, shows chat, hides when empty
+      - name: X11 overlay (Tk) – stays up, hides when empty
         run: |
           printf 'L 10/16/2026 - 20:00:00: [ALL] Ivan: привет всем\n' > console.log
           Xvfb :99 -screen 0 1280x720x24 & sleep 2
-          export DISPLAY=:99
-          python3 cs2translate.py --log console.log --history 5 --duration 6 > out.log 2>&1 &
+          DISPLAY=:99 python3 cs2translate.py --log console.log --duration 6 > x11.log 2>&1 &
           PID=$!
-          sleep 3; import -window root shown.png
-          printf 'L 10/16/2026 - 20:00:05: [CT] Ana: rush b\n' >> console.log
-          sleep 12; import -window root hidden.png
-          kill -0 $PID || { cat out.log; exit 1; }
-          kill $PID; cat out.log
+          sleep 4; DISPLAY=:99 import -window root x11-shown.png
+          sleep 10; DISPLAY=:99 import -window root x11-hidden.png
+          kill -0 $PID || { cat x11.log; exit 1; }
+          kill $PID; cat x11.log
+      - name: Wayland overlay (layer shell on headless Sway) – see-through, hides when empty
+        run: |
+          export XDG_RUNTIME_DIR=$(mktemp -d); chmod 700 $XDG_RUNTIME_DIR
+          printf 'output HEADLESS-1 resolution 1280x720\noutput * bg #3a6ea5 solid_color\n' > sway.cfg
+          WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 sway -c sway.cfg > sway.log 2>&1 &
+          sleep 3
+          export WAYLAND_DISPLAY=$(ls $XDG_RUNTIME_DIR | grep -m1 '^wayland-[0-9]$')
+          printf 'L 10/16/2026 - 20:00:00: [CT] Ana: rush b bitte\n' > console2.log
+          python3 cs2translate.py --log console2.log --duration 8 > wl.log 2>&1 &
+          PID=$!
+          sleep 4; grim wl-shown.png
+          sleep 12; grim wl-hidden.png
+          kill -0 $PID || { cat wl.log; cat sway.log | tail -20; exit 1; }
+          kill $PID; cat wl.log
       - name: Share screenshots (manual runs only)
         if: github.event_name == 'workflow_dispatch'
         run: |
+          mkdir /tmp/shots && cp *.png *.log /tmp/shots/
           git config user.name ci; git config user.email ci@users.noreply.github.com
-          git fetch -q origin ci-screenshots || true
           git checkout -q --orphan linux-shots
-          git rm -rfq --cached .
-          git add shown.png hidden.png out.log
+          git rm -rfq --cached . >/dev/null
+          git clean -fdxq
+          cp /tmp/shots/* .
+          git add *.png *.log
           git commit -qm "linux screenshots"
-          git push -qf origin linux-shots:ci-screenshots-linux
+          git push -qf origin HEAD:refs/heads/ci-screenshots-linux
