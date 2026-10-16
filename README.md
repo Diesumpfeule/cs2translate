@@ -5,12 +5,14 @@
  / __/ __|_  )  / __| |_  __ _| |_
 | (__\__ \/ /  | (__| ' \/ _` |  _|
  \___|___/___|  \___|_||_\__,_|\__|
-        Übersetzer  →  Deutsch
+        translate  →  DE
 ```
+
+> ⚠ **Proof of concept, written by Claude (AI) – no warranty, use at your own risk.** See [Disclaimer](#disclaimer).
 
 Live translation of the Counter-Strike 2 chat on Linux, shown as a see-through overlay right
 on top of the in-game chat. Translates into German by default – any other language works
-with `--lang`.
+with `--lang` (e.g. `--lang en`).
 
 - **Starts by itself** when CS2 runs and stops with the game
 - **Overlay** without a frame, always on top, mouse clicks go through to the game
@@ -52,13 +54,13 @@ your PC.
 3. **Install:**
    ```sh
    git clone https://github.com/Diesumpfeule/cs2translate.git && cd cs2translate
-   bash installieren.sh
+   bash install.sh
    ```
 4. **Display mode:** in CS2 under *Video* set **Fullscreen windowed**. Nothing can be drawn over
    exclusive fullscreen.
 5. **Position it** – once, while CS2 runs:
    ```sh
-   python3 ~/.local/share/cs2-chat-uebersetzer/cs2_chat_uebersetzer.py --verschieben
+   python3 ~/.local/share/cs2translate/cs2translate.py --move
    ```
    Drag the sample overlay over the CS2 chat, close with `Esc`. The position is saved.
 
@@ -76,8 +78,8 @@ login
        └─ CS2 closed → translator stops
 ```
 
-`installieren.sh` uses an XDG autostart entry (`~/.config/autostart`). GNOME, KDE, Xfce & co.
-run it; tiling WMs like Sway or i3 don't – start `~/.local/bin/cs2-uebersetzer-waechter` from
+`install.sh` uses an XDG autostart entry (`~/.config/autostart`). GNOME, KDE, Xfce & co.
+run it; tiling WMs like Sway or i3 don't – start `~/.local/bin/cs2translate-watcher` from
 your WM config instead (or use swayforge).
 
 ## Options
@@ -85,32 +87,32 @@ your WM config instead (or use swayforge).
 Start by hand, e.g. for testing:
 
 ```sh
-python3 ~/.local/share/cs2-chat-uebersetzer/cs2_chat_uebersetzer.py [options]
+python3 ~/.local/share/cs2translate/cs2translate.py [options]
 ```
 
 | Option | Effect | Default |
 |---|---|---|
-| `--verschieben` | position the overlay with the mouse | |
+| `--move` | position the overlay with the mouse | |
 | `--x 20 --y 400` | position in pixels | saved |
-| `--breite 600` | overlay width | 520 |
-| `--schrift 14` | font size | 12 |
-| `--zeilen 8` | max. messages shown at once | 6 |
-| `--dauer 20` | seconds until a message disappears | 15 |
+| `--width 600` | overlay width | 520 |
+| `--font-size 14` | font size | 12 |
+| `--lines 8` | max. messages shown at once | 6 |
+| `--duration 20` | seconds until a message disappears | 15 |
 | `--alpha 0.5` | transparency (0.2 = very see-through, 1.0 = solid) | 0.7 |
-| `--ohne-original` | hide the grey original text | |
+| `--no-original` | hide the grey original text | |
 | `--lang en` | target language | de |
-| `--verlauf 0` | old messages shown at start (0 = none) | 5 |
-| `--fenster` | normal window instead of overlay | |
+| `--history 0` | old messages shown at start (0 = none) | 5 |
+| `--window` | normal window instead of overlay | |
 | `--terminal` | terminal output only, no window | |
-| `--alles` | debug mode: shows **every** new log line | |
+| `--debug` | shows **every** new log line | |
 | `--log "PATH"` | path to `console.log` (in quotes!) | auto-detected |
 
-For the automatic start, add options to the watcher: `~/.local/bin/cs2-uebersetzer-waechter`,
-the line with `--verlauf 0` – e.g. `--verlauf 0 --schrift 14 --ohne-original`.
+For the automatic start, add options to the watcher: `~/.local/bin/cs2translate-watcher`,
+the line with `--history 0` – e.g. `--history 0 --font-size 14 --no-original`.
 
 ## Customizing
 
-**Colours and font** → `~/.config/cs2_chat_uebersetzer.json` (next to the saved position).
+**Colours and font** → `~/.config/cs2translate.json` (next to the saved position).
 Missing values use the defaults:
 
 ```json
@@ -124,18 +126,18 @@ Missing values use the defaults:
 }
 ```
 
-**Everything else** is in `cs2_chat_uebersetzer.py`:
+**Everything else** is in `cs2translate.py`:
 
 | What | Where |
 |---|---|
 | Logo | `LOGO = r"""` at the top (keep the `r`!) – make your own with `figlet -f small "Text"` |
-| How long the logo stays | `LOGO_SEKUNDEN = 4` |
+| How long the logo stays | `LOGO_SECONDS = 4` |
 | Default transparency | `"--alpha"` … `default=0.7` in `main` |
 
-Check the file after editing, then run `bash installieren.sh` again:
+Check the file after editing, then run `bash install.sh` again:
 
 ```sh
-python3 -m py_compile cs2_chat_uebersetzer.py     # no output = fine
+python3 -m py_compile cs2translate.py     # no output = fine
 ```
 
 > Transparency applies to the whole overlay including the text – Tkinter on Linux can't make
@@ -143,22 +145,22 @@ python3 -m py_compile cs2_chat_uebersetzer.py     # no output = fine
 
 ## Troubleshooting
 
-Everything is logged to `~/.cache/cs2_chat_uebersetzer.log`.
+Everything is logged to `~/.cache/cs2translate.log`.
 
 | Problem | Fix |
 |---|---|
-| No "CS2 erkannt" line in the log | Is the watcher running? `pgrep -af waechter`. Otherwise run `bash installieren.sh` again or log in again. |
-| "Warte auf console.log" | `-condebug` is missing, or CS2 is in another Steam library → `--log "PATH"`. Find it: `find / -name console.log -path "*csgo*" 2>/dev/null` |
+| No "CS2 detected" line in the log | Is the watcher running? `pgrep -af cs2translate-watcher`. Otherwise run `bash install.sh` again or log in again. |
+| "Waiting for console.log" | `-condebug` is missing, or CS2 is in another Steam library → `--log "PATH"`. Find it: `find / -name console.log -path "*csgo*" 2>/dev/null` |
 | Overlay doesn't show | Display mode *Fullscreen windowed*? `python3-tkinter` installed? |
 | Overlay is behind the game | Some Wayland desktops ignore "always on top". CS2 usually runs through XWayland, where it works. Otherwise try `--fenster`. |
-| "Übersetzung fehlgeschlagen" | A service blocked you for a moment (common with VPNs). It switches automatically and retries after a minute. |
-| Messages aren't detected | Start with `--alles --terminal`, write in game and look at what the line looks like. |
+| "translation failed" | A service blocked you for a moment (common with VPNs). It switches automatically and retries after a minute. |
+| Messages aren't detected | Start with `--debug --terminal`, write in game and look at what the line looks like. |
 | CS2 won't start anymore | The launch options must contain **only** `-condebug` (or `… %command% -condebug`). |
 
 ## Uninstall
 
 ```sh
-bash deinstallieren.sh
+bash uninstall.sh
 ```
 
 Then remove `-condebug` from the CS2 launch options if you don't need it anymore.
@@ -166,12 +168,30 @@ Then remove `-condebug` from the CS2 launch options if you don't need it anymore
 ## Files
 
 ```
-cs2_chat_uebersetzer.py    the program
-installieren.sh            installs it + the watcher and autostart
-deinstallieren.sh          removes everything again
+cs2translate.py    the program
+install.sh         installs it + the watcher and autostart (also replaces the old German version)
+uninstall.sh       removes everything again
 ```
 
-The program's messages and option names are in German.
+## Credits & notes
+
+- Translation uses Google Translate's **unofficial** `translate_a` endpoint, with
+  [MyMemory](https://mymemory.translated.net) as fallback. Neither is an official API for
+  third-party tools – they can block, rate-limit or change at any time, and their terms apply.
+  Chat messages are sent to these services.
+- Not affiliated with Valve. Counter-Strike 2 is a trademark of Valve Corporation.
+
+## Disclaimer
+
+**This is a proof of concept** – not finished, not polished and not tested on every setup.
+The code was written by **Claude**, an AI model by Anthropic, following my ideas and
+instructions. It is provided **as is, without any warranty**, and I take **no responsibility**
+for anything it does to your system, your data or your accounts. Read the scripts before you
+run them – use at your own risk.
+
+## Contributions
+
+This is a personal project: pull requests and outside code are not accepted. Feel free to fork it.
 
 ## License
 
