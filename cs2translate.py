@@ -443,7 +443,6 @@ def run_overlay_layershell(out_q, args):
     vis = win.get_screen().get_rgba_visual()
     if vis:
         win.set_visual(vis)
-    win.set_app_paintable(True)
     GtkLayerShell.init_for_window(win)
     GtkLayerShell.set_namespace(win, "cs2translate")
     GtkLayerShell.set_layer(win, GtkLayerShell.Layer.OVERLAY)
