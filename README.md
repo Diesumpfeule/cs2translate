@@ -14,6 +14,8 @@ other language works (settings window, or `--lang en`).
 - **Overlay** without a frame, always on top, mouse clicks go through to the game
 - **Team colours** – CT blue, T orange, all chat green, original text small underneath
 - Messages **fade out** after 15 seconds; an empty overlay is invisible
+- **Write back** – type in your language, it is translated into theirs and sent to the in-game
+  chat ([how](#write-back))
 - **Two translation services** (Google, MyMemory) with automatic fallback
 - **No extra packages** – only Python's standard library and Tkinter
 
@@ -31,6 +33,10 @@ window of its own.
 
 Valve guarantees nothing for third-party tools, but tools built this way have been used openly
 for years.
+
+The optional [write back](#write-back) feature is separate: it talks to the game's own console
+port (the official launch option `-netconport`) and only exists if you add that option yourself.
+Leave the option out and cs2translate stays read-only.
 
 **Privacy:** chat messages are sent to Google or MyMemory for translation. Nothing else leaves
 your PC.
@@ -57,6 +63,45 @@ an "unknown publisher" the first time, because the exe isn't code-signed. Click 
 anyway*, or build it yourself from `cs2translate.py` with PyInstaller (see
 `.github/workflows/windows.yml`). Every release is built by GitHub Actions straight from this
 repository.
+
+## Write back
+
+Reading is only half of a conversation. With **write back** you type in your own language and
+cs2translate sends it into the game chat in theirs.
+
+1. Add **`-netconport 2121`** to the CS2 launch options (next to `-condebug`):
+   `-condebug -netconport 2121`
+2. Open the write box:
+   - **Windows:** press **Ctrl+Alt+T** while CS2 runs (changeable in the settings window). The
+     hotkey is only active while CS2 is running, so it never blocks other programs.
+   - **Linux:** bind `cs2translate --write` (or `python3 ~/.local/share/cs2translate/cs2translate.py --write`)
+     to a key in your WM, e.g. in Sway: `bindsym $mod+Shift+t exec cs2translate --write`.
+3. Type your message and press **Enter**. It is translated and sent. **Tab** switches between
+   *All chat* and *Team chat*, **Esc** closes the box.
+
+**Which language?** *Auto* uses the language of whoever wrote last in chat (not your own
+language, and only from the last three hours; otherwise English). You can also pick a player
+from the drop-down (it lists who wrote recently and in which language) or a fixed language.
+Long messages are split into several chat lines. If you'd rather check the translation first,
+switch on *Show the translation first, send with a second Enter* in the settings.
+
+**It doesn't connect?** If the console port isn't answering (game not started, launch option
+missing), the translation is **copied to the clipboard** instead: just paste it into the chat with
+Ctrl+V. *Test console port* in the settings (or `cs2translate --netcon-test`) tells you whether
+the game answers.
+
+From a script: `cs2translate --say "good luck" --to ru --team`.
+
+> **Heads-up.** I couldn't test this against a real CS2 – the console-port protocol is based
+> on how the engine's text console works (one command per line, plain TCP on `127.0.0.1`), and
+> Valve can change or remove it. Everything else is tested; if sending doesn't work for you, the
+> clipboard fallback still does. The port is meant for your own PC only: don't forward it in your
+> router, and keep it blocked in your firewall (Windows blocks incoming connections by default).
+> Anything that can connect to it can run commands in your game's console. cs2translate removes
+> `;`, quotes and control characters from what it sends, so a message can't smuggle in other
+> commands. Whether using the console port is acceptable to Valve's anti-cheat is not something
+> I can promise – it's a launch option of the game itself and no keys are simulated, but it is
+> your decision.
 
 ## Install on Linux
 
@@ -137,6 +182,10 @@ python3 ~/.local/share/cs2translate/cs2translate.py [options]
 | `--watch` | stay in the background, overlay only while CS2 runs | |
 | `--autostart on/off` | Windows: start the watcher at login | |
 | `--test` | show the overlay with sample messages | |
+| `--write` | open the write box (translate + send to the game chat) | |
+| `--say "text"` | translate and send one message from the command line | |
+| `--to ru` / `--team` | with `--say`: language (default auto) / team chat | auto / all |
+| `--netcon-test` | check that the game's console port answers | |
 
 Values saved in the settings window become the defaults; options on the command line still win.
 
@@ -201,7 +250,7 @@ Then remove `-condebug` from the CS2 launch options if you don't need it anymore
 ## Files
 
 ```
-cs2translate.py    the program
+cs2translate.py    the program (overlay, watcher, settings, write box)
 install.sh         installs it + the watcher and autostart (also replaces the old German version)
 uninstall.sh       removes everything again
 ```
