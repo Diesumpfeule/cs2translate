@@ -1,12 +1,8 @@
 # cs2translate
 
-```
-  ___ ___ ___    ___ _         _
- / __/ __|_  )  / __| |_  __ _| |_
-| (__\__ \/ /  | (__| ' \/ _` |  _|
- \___|___/___|  \___|_||_\__,_|\__|
-        translate  →  DE
-```
+<p align="center">
+  <img src="docs/banner.svg" alt="cs2translate" width="100%">
+</p>
 
 > ⚠ **Proof of concept, written by Claude (AI) – no warranty, use at your own risk.** See [Disclaimer](#disclaimer).
 

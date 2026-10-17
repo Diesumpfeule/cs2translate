@@ -48,10 +48,16 @@ INVISIBLE = dict.fromkeys(map(ord, "‎‏​﻿"), None)
 
 # Start logo (r"..." keeps the backslashes)
 LOGO = r"""
-  ___ ___ ___    ___ _         _
- / __/ __|_  )  / __| |_  __ _| |_
-| (__\__ \/ /  | (__| ' \/ _` |  _|
- \___|___/___|  \___|_||_\__,_|\__|
+ :+@@@@@: =@@@@@- @@*@@*.
+.@@=      @@-.    :   @@=
+-%%       -*%%%%-   :*%+
+.##=      :   =## :*#+.
+ :+*****: ******= ******=
+@@@@@@@@- @@@@@@+     @@@=   @@@:  @@ =@@@@@- @@=        @@@=   @@@@@@@@- @@@@@@-
+   @@-    @@= -@@    +@+@@:  @@@@: @@ @@-.    @@=       +@+@@:     @@-    @@=...
+   %%-    %%%*%%-   -%% -%%  %%-*%:%% -*%%%%- %%=      -%% -%%     %%-    %%%%%%:
+   ##-    ##=:+##   #######= ##- *### :   =## ##=      #######=    ##-    ##=
+   **-    **=  +** +**   :** **-  *** ******= ******+ +**   :**    **-    ******+
         translate  →  {lang}
 """
 LOGO_SECONDS = 4
@@ -433,6 +439,7 @@ def run_overlay_layershell(out_q, args):
     ALL = th.get("all", "#9be37a")
 
     mon = Gdk.Display.get_default().get_monitor(0)
+    sw = mon.get_geometry().width if mon else 1920
     sh = mon.get_geometry().height if mon else 1080
     height = int(sh * 0.22)
     pos = {"x": args.x if args.x is not None else cfg.get("x", 20),
@@ -455,9 +462,18 @@ def run_overlay_layershell(out_q, args):
     except AttributeError:                       # older gtk-layer-shell
         GtkLayerShell.set_keyboard_interactivity(win, bool(args.move))
 
+    def margins(x, bot):
+        # a saved position can come from another monitor layout (e.g. x=1920 from the old Tk
+        # overlay) – keep the overlay on this screen instead of placing it off-screen
+        if not 0 <= x <= sw - args.width - 16:
+            x = 20
+        return (x,
+                min(max(0, sh - bot), max(0, sh - 60)))
+
     def place():
-        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, max(0, pos["x"]))
-        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, max(0, sh - bottom))
+        left, bot = margins(pos["x"], bottom)
+        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, left)
+        GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, bot)
     place()
 
     css = Gtk.CssProvider()
@@ -525,8 +541,9 @@ def run_overlay_layershell(out_q, args):
         nonlocal_bottom = [bottom]
 
         def place2():
-            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, max(0, pos["x"]))
-            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, max(0, sh - nonlocal_bottom[0]))
+            left, bot = margins(pos["x"], nonlocal_bottom[0])
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.LEFT, left)
+            GtkLayerShell.set_margin(win, GtkLayerShell.Edge.BOTTOM, bot)
 
         win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK
                        | Gdk.EventMask.POINTER_MOTION_MASK)
