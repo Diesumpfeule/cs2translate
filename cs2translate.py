@@ -426,6 +426,7 @@ def layer_shell_available():
     try:
         import gi
         gi.require_version("Gtk", "3.0")
+        gi.require_version("Gdk", "3.0")
         gi.require_version("GtkLayerShell", "0.1")
         from gi.repository import GtkLayerShell  # noqa: F401
         import cairo  # noqa: F401  (empty input region = click-through)
@@ -437,6 +438,7 @@ def layer_shell_available():
 def run_overlay_layershell(out_q, args):
     import gi
     gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")             # else Gdk 4 loads first and GTK 3 refuses to start
     gi.require_version("GtkLayerShell", "0.1")
     import cairo
     from gi.repository import Gdk, GLib, Gtk, GtkLayerShell
